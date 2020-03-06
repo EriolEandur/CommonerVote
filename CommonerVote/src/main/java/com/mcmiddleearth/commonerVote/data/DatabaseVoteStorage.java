@@ -16,6 +16,7 @@
  */
 package com.mcmiddleearth.commonerVote.data;
 
+import com.mcmiddleearth.commonerVote.CommonerVotePlugin;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -37,6 +38,8 @@ import org.bukkit.OfflinePlayer;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.MemoryConfiguration;
 import org.bukkit.entity.Player;
+import org.bukkit.scheduler.BukkitRunnable;
+import org.bukkit.scheduler.BukkitTask;
 import org.mariadb.jdbc.MySQLDataSource;
 
 /**
@@ -65,6 +68,8 @@ public class DatabaseVoteStorage implements VoteStorage{
     private PreparedStatement hasVoted;
     private PreparedStatement maxWeight;
     
+    private BukkitTask keepAliveTask;
+    
     @Getter
     private boolean connected = false;
     
@@ -82,6 +87,12 @@ public class DatabaseVoteStorage implements VoteStorage{
         dataBase = new MySQLDataSource(dbIp,port,dbName);
         connect();
         checkConnection();
+        keepAliveTask = new BukkitRunnable() {
+            @Override
+            public void run() {
+                checkConnection();
+            }
+        }.runTaskTimerAsynchronously(CommonerVotePlugin.getPluginInstance(),2000,1200);
     }
     
     public final boolean checkConnection() {
@@ -134,6 +145,8 @@ public class DatabaseVoteStorage implements VoteStorage{
     public void disconnect() {
         if(connected && dbConnection!=null) {
             try {
+                if(keepAliveTask!=null)
+                    keepAliveTask.cancel();
                 dbConnection.close();
             } catch (SQLException ex) {
                 Logger.getLogger(DatabaseVoteStorage.class.getName()).log(Level.SEVERE, null, ex);
